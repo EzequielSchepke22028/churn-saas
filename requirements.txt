@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+psycopg2-binary
+pydantic
+PyJWT
+bcrypt
+pandas
+scikit-learn
+joblib
+python-multipartpython-dotenv
