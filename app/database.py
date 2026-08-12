@@ -101,3 +101,21 @@ def get_db_dependency(tenant_id: str):
     """
     with get_tenant_connection(tenant_id) as conn:
         yield conn
+
+@contextmanager
+def get_connection():
+    """
+    Conexión simple del pool, SIN SET LOCAL de tenant. Usar solo para
+    consultas sobre tablas sin RLS (ej. 'tenants' -- buscar un tenant
+    por slug antes de saber su tenant_id, como en login/registro).
+    """
+    pool_ = _get_pool()
+    conn = pool_.getconn()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        pool_.putconn(conn)

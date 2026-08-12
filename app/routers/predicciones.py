@@ -1,15 +1,10 @@
-"""
-Endpoint de predicciones: recibe un CSV crudo de un tenant, lo mapea
-a las columnas que el pipeline espera (vía mapeo_service), corre el
-modelo, guarda el historial en predicciones_historial, y devuelve
-las probabilidades.
-"""
+"""Endpoint de predicciones, protegido por JWT: tenant_id sale del token, no de la URL."""
 
 import io
-
 import pandas as pd
-from fastapi import APIRouter, File, HTTPException, Path, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
+from app.auth.dependencies import UsuarioActual, get_current_user
 from app.database import get_tenant_connection
 from app.logging_config import logger
 from app.models.model_loader import pipeline
@@ -21,14 +16,16 @@ from app.services.mapeo_service import (
     preparar_dataframe_para_pipeline,
 )
 
-router = APIRouter(prefix="/tenants/{tenant_id}/predicciones", tags=["predicciones"])
+router = APIRouter(prefix="/predicciones", tags=["predicciones"])
 
 
 @router.post("", response_model=PrediccionBatchResponse)
 async def crear_predicciones(
-    tenant_id: str = Path(..., description="UUID del tenant"),
-    archivo: UploadFile = File(..., description="CSV con los datos de clientes del tenant"),
+    archivo: UploadFile = File(...),
+    usuario: UsuarioActual = Depends(get_current_user),
 ):
+    tenant_id = usuario.tenant_id
+
     if not archivo.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="El archivo debe ser un .csv")
 
@@ -36,7 +33,6 @@ async def crear_predicciones(
     try:
         df_origen = pd.read_csv(io.BytesIO(contenido))
     except Exception as e:
-        logger.error(f"CSV ilegible | tenant={tenant_id} | detalle={e}")
         raise HTTPException(status_code=400, detail=f"No se pudo leer el CSV: {e}")
 
     if df_origen.empty:
@@ -53,27 +49,16 @@ async def crear_predicciones(
                     cur.execute(
                         """
                         INSERT INTO predicciones_historial
-                            (tenant_id, cliente_identificador, input_data, churn_probability)
-                        VALUES (%s, %s, %s, %s)
+                            (tenant_id, cliente_identificador, input_data, churn_probability, creado_por)
+                        VALUES (%s, %s, %s, %s, %s)
                         """,
-                        (
-                            tenant_id,
-                            str(i),
-                            df_origen.iloc[i].to_json(),
-                            round(float(prob), 4),
-                        ),
+                        (tenant_id, str(i), df_origen.iloc[i].to_json(), round(float(prob), 4), usuario.user_id),
                     )
-                    predicciones.append(
-                        PrediccionItem(fila_indice=i, churn_probability=round(float(prob), 4))
-                    )
+                    predicciones.append(PrediccionItem(fila_indice=i, churn_probability=round(float(prob), 4)))
 
-        logger.info(f"PREDICCION_BATCH | tenant={tenant_id} | filas={len(predicciones)}")
-        return PrediccionBatchResponse(
-            tenant_id=tenant_id, total_filas=len(predicciones), predicciones=predicciones
-        )
+        logger.info(f"PREDICCION_BATCH | tenant={tenant_id} | usuario={usuario.user_id} | filas={len(predicciones)}")
+        return PrediccionBatchResponse(tenant_id=tenant_id, total_filas=len(predicciones), predicciones=predicciones)
 
-    except ValueError:
-        raise HTTPException(status_code=400, detail="tenant_id no es un UUID válido.")
     except TenantNoEncontradoError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except MapeoIncompletoError as e:
@@ -81,5 +66,5 @@ async def crear_predicciones(
     except ColumnaOrigenNoEncontradaError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
-        logger.error(f"ERROR inesperado en predicciones | tenant={tenant_id} | detalle={e}", exc_info=True)
+        logger.error(f"ERROR inesperado | tenant={tenant_id} | detalle={e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno procesando las predicciones.")

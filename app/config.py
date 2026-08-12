@@ -7,3 +7,7 @@ DATABASE_URL_APP_USER = os.getenv(
     "DATABASE_URL_APP_USER",
     "postgresql://app_user:changeme@localhost:5433/churn_saas"
 )
+
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "clave-insegura-solo-para-dev-cambiar-en-produccion")
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_MINUTES = 60

@@ -4,10 +4,10 @@ from fastapi import FastAPI
 
 from app.database import close_pool, init_pool
 from app.logging_config import logger
-from app.routers import predicciones
+from app.routers import auth, predicciones
 
 app = FastAPI(title="Churn SaaS API")
-
+app.include_router(auth.router)
 app.include_router(predicciones.router)
 
 
