@@ -5,6 +5,6 @@ pydantic
 PyJWT
 bcrypt
 pandas
-scikit-learn
+scikit-learn==1.7.1
 joblib
 python-multipartpython-dotenv
