@@ -1,6 +1,8 @@
 -- ============================================
--- Churn SaaS - Inicialización de base de datos
+-- Churn SaaS - Inicializacion de base de datos
 -- Multi-tenant con Row Level Security (RLS)
+-- Version reproducible: incluye factor_conversion
+-- y seeds de desarrollo (tenant, usuario, mapeo)
 -- ============================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -15,6 +17,7 @@ CREATE TABLE tenants (
     slug VARCHAR(80) NOT NULL UNIQUE,
     plan VARCHAR(50) NOT NULL DEFAULT 'trial',
     activo BOOLEAN NOT NULL DEFAULT true,
+    factor_conversion NUMERIC(10,4) NOT NULL DEFAULT 1.0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -56,11 +59,8 @@ CREATE INDEX idx_predicciones_tenant_id ON predicciones_historial(tenant_id);
 CREATE INDEX idx_predicciones_created_at ON predicciones_historial(created_at);
 
 -- ============================================
--- 2. ROL DE APLICACIÓN (no-superuser)
+-- 2. ROL DE APLICACION (no-superuser)
 -- ============================================
--- Mismo patrón que el CRM: la API se conecta con app_user, nunca con
--- 'postgres'. RLS no se aplica a superusers ni al dueño de la tabla
--- salvo que se fuerce explícitamente con FORCE ROW LEVEL SECURITY.
 
 CREATE ROLE app_user WITH LOGIN PASSWORD 'app_user_dev_pass';
 
@@ -72,11 +72,6 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE O
 -- ============================================
 -- 3. ROW LEVEL SECURITY
 -- ============================================
--- current_setting(..., true) es NULL-safe: si nadie seteó
--- app.current_workspace_id en la transacción, devuelve NULL en vez
--- de tirar error. NULLIF sobre '' cubre el caso de que se setee como
--- string vacío. Sin tenant_id seteado -> ninguna fila matchea ->
--- fail-safe (no se filtra nada por accidente).
 
 ALTER TABLE usuarios_tenant ENABLE ROW LEVEL SECURITY;
 ALTER TABLE usuarios_tenant FORCE ROW LEVEL SECURITY;
@@ -93,12 +88,88 @@ ALTER TABLE predicciones_historial FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation_predicciones ON predicciones_historial
     USING (tenant_id = NULLIF(current_setting('app.current_workspace_id', true), '')::uuid);
 
--- 'tenants' queda sin RLS a propósito: es la tabla raíz que lista los
--- tenants en sí. La va a manejar un rol/endpoint de super-admin más
--- adelante, no app_user en contexto de un tenant específico.
+-- 'tenants' queda sin RLS: tabla raiz, la maneja un rol de
+-- super-admin mas adelante, no app_user en contexto de tenant.
 
 -- ============================================
--- 4. TENANT DE PRUEBA (para validar hoy mismo)
+-- 4. SEEDS DE DESARROLLO
 -- ============================================
-INSERT INTO tenants (nombre, slug, plan)
-VALUES ('Tenant de Prueba', 'tenant-prueba', 'trial');
+-- UUID del tenant FIJO (no gen_random_uuid()) para que los scripts
+-- de prueba (test_mapeo_aislado.py, curl de referencia) sigan
+-- funcionando sin cambios aunque se reconstruya la DB desde cero.
+
+INSERT INTO tenants (id, nombre, slug, plan, factor_conversion)
+VALUES (
+    'dc2f4eb0-1483-4f1e-8143-dd6ac08e8826',
+    'Tenant de Prueba',
+    'tenant-prueba',
+    'trial',
+    100.0
+);
+
+-- Usuario admin de prueba. La contrasena se hashea con pgcrypto
+-- (crypt + gen_salt('bf') = bcrypt), formato compatible con la
+-- libreria bcrypt de Python usada en auth.py (bcrypt.checkpw).
+-- Password en texto plano: test1234
+INSERT INTO usuarios_tenant (tenant_id, email, password_hash, rol)
+VALUES (
+    'dc2f4eb0-1483-4f1e-8143-dd6ac08e8826',
+    'gimnasio@test.com',
+    crypt('test1234', gen_salt('bf')),
+    'owner'
+);
+
+-- Mapeo de columnas: CSV en espanol de un gimnasio -> columnas del pipeline.
+INSERT INTO mapeo_columnas (tenant_id, columna_pipeline, columna_origen, mapeo_valores) VALUES
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'tenure', 'Meses_Cliente', NULL),
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'MonthlyCharges', 'Cuota_Mensual', NULL),
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'TotalCharges', 'Total_Pagado', NULL),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'gender', 'Sexo',
+    '{"M": "Male", "F": "Female"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'SeniorCitizen', 'Es_Mayor',
+    '{"Si": 1, "No": 0}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'Partner', 'Tiene_Pareja',
+    '{"Si": "Yes", "No": "No"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'Dependents', 'Tiene_Hijos',
+    '{"Si": "Yes", "No": "No"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'PhoneService', 'Tiene_Telefono',
+    '{"Si": "Yes", "No": "No"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'MultipleLines', 'Lineas_Multiples',
+    '{"Si": "Yes", "No": "No", "Sin_Telefono": "No phone service"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'InternetService', 'Tipo_Internet',
+    '{"DSL": "DSL", "Fibra": "Fiber optic", "No": "No"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'OnlineSecurity', 'Seguridad_Online',
+    '{"Si": "Yes", "No": "No", "Sin_Internet": "No internet service"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'OnlineBackup', 'Backup_Online',
+    '{"Si": "Yes", "No": "No", "Sin_Internet": "No internet service"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'DeviceProtection', 'Proteccion_Dispositivo',
+    '{"Si": "Yes", "No": "No", "Sin_Internet": "No internet service"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'TechSupport', 'Soporte_Tecnico',
+    '{"Si": "Yes", "No": "No", "Sin_Internet": "No internet service"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'StreamingTV', 'Streaming_TV',
+    '{"Si": "Yes", "No": "No", "Sin_Internet": "No internet service"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'StreamingMovies', 'Streaming_Peliculas',
+    '{"Si": "Yes", "No": "No", "Sin_Internet": "No internet service"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'Contract', 'Tipo_Contrato',
+    '{"Mensual": "Month-to-month", "Anual": "One year", "Bianual": "Two year"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'PaperlessBilling', 'Factura_Digital',
+    '{"Si": "Yes", "No": "No"}'),
+
+('dc2f4eb0-1483-4f1e-8143-dd6ac08e8826', 'PaymentMethod', 'Metodo_Pago',
+    '{"Cheque_Electronico": "Electronic check", "Cheque_Correo": "Mailed check", "Transferencia_Bancaria": "Bank transfer (automatic)", "Tarjeta_Credito": "Credit card (automatic)"}');
