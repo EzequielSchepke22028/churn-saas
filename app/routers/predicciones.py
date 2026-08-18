@@ -4,6 +4,10 @@ import io
 import pandas as pd
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
+from fastapi import BackgroundTasks
+from app.config import CHURN_ALERT_THRESHOLD
+from app.services.alertas_service import enviar_alerta_churn
+
 from app.auth.dependencies import UsuarioActual, get_current_user
 from app.database import get_tenant_connection
 from app.logging_config import logger
@@ -21,6 +25,7 @@ router = APIRouter(prefix="/predicciones", tags=["predicciones"])
 
 @router.post("", response_model=PrediccionBatchResponse)
 async def crear_predicciones(
+    background_tasks: BackgroundTasks,
     archivo: UploadFile = File(...),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
@@ -54,6 +59,10 @@ async def crear_predicciones(
                         """,
                         (tenant_id, str(i), df_origen.iloc[i].to_json(), round(float(prob), 4), usuario.user_id),
                     )
+                    if prob > CHURN_ALERT_THRESHOLD:
+                        background_tasks.add_task(
+                            enviar_alerta_churn, tenant_id, str(i), round(float(prob), 4)
+                        )
                     predicciones.append(PrediccionItem(fila_indice=i, churn_probability=round(float(prob), 4)))
 
         logger.info(f"PREDICCION_BATCH | tenant={tenant_id} | usuario={usuario.user_id} | filas={len(predicciones)}")
