@@ -1,0 +1,4 @@
+Meses_Cliente,Cuota_Mensual,Total_Pagado,Sexo,Es_Mayor,Tiene_Pareja,Tiene_Hijos,Tiene_Telefono,Lineas_Multiples,Tipo_Internet,Seguridad_Online,Backup_Online,Proteccion_Dispositivo,Soporte_Tecnico,Streaming_TV,Streaming_Peliculas,Tipo_Contrato,Factura_Digital,Metodo_Pago
+12,8500.0,102000.0,M,No,Si,No,Si,No,Fibra,No,Si,No,No,Si,Si,Mensual,Si,Cheque_Electronico
+48,4200.0,201600.0,F,Si,No,Si,Si,Si,DSL,Si,No,Si,Si,No,No,Bianual,No,Transferencia_Bancaria
+3,9800.0,29400.0,M,No,No,No,No,Sin_Telefono,No,Sin_Internet,Sin_Internet,Sin_Internet,Sin_Internet,Sin_Internet,Sin_Internet,Anual,Si,Tarjeta_Credito
