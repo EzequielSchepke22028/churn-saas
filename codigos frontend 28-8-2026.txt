@@ -1,0 +1,239 @@
+
+src/store/authStore.js
+
+import { create } from 'zustand'
+import api, { TOKEN_STORAGE_KEY } from '../services/api'
+
+const leerTokenGuardado = () => localStorage.getItem(TOKEN_STORAGE_KEY)
+
+/**
+ * Store de autenticacion. El token vive en localStorage (fuente de
+ * verdad para el interceptor de api.js) y en el estado de Zustand
+ * (fuente de verdad para que React re-renderice cuando cambia). Las
+ * dos escrituras van siempre juntas -- nunca se actualiza una sin la
+ * otra, o quedarian desincronizadas.
+ */
+const useAuthStore = create((set) => ({
+  token: leerTokenGuardado(),
+  user: null,
+  isAuthenticated: Boolean(leerTokenGuardado()),
+  loading: false,
+  error: null,
+
+  /**
+   * Pega al POST /auth/login del backend. Devuelve true/false en vez
+   * de lanzar, para que el componente decida que hacer (redirigir,
+   * quedarse quieto) sin necesitar un try/catch propio.
+   */
+  login: async (tenantSlug, email, password) => {
+    set({ loading: true, error: null })
+
+    try {
+      const { data } = await api.post('/auth/login', {
+        tenant_slug: tenantSlug,
+        email,
+        password,
+      })
+
+      localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token)
+
+      set({
+        token: data.access_token,
+        user: {
+          email,
+          tenantSlug,
+          tenantId: data.tenant_id,
+          role: data.role,
+        },
+        isAuthenticated: true,
+        loading: false,
+        error: null,
+      })
+
+      return true
+    } catch (err) {
+      const detalle = err.response?.data?.detail
+      const mensaje =
+        typeof detalle === 'string'
+          ? detalle
+          : err.response
+            ? 'Revisa los datos ingresados.'
+            : 'No pudimos conectar con el servidor. Intenta de nuevo.'
+
+      set({ loading: false, error: mensaje })
+      return false
+    }
+  },
+
+  logout: () => {
+    localStorage.removeItem(TOKEN_STORAGE_KEY)
+    set({ token: null, user: null, isAuthenticated: false, error: null })
+  },
+
+  clearError: () => set({ error: null }),
+}))
+
+export default useAuthStore
+
+
+
+
+
+
+src/pages/auth/Login.jsx
+
+import { useState } from 'react'
+import useAuthStore from '../../store/authStore'
+
+export default function Login() {
+  const [tenantSlug, setTenantSlug] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  const login = useAuthStore((state) => state.login)
+  const loading = useAuthStore((state) => state.loading)
+  const error = useAuthStore((state) => state.error)
+  const clearError = useAuthStore((state) => state.clearError)
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    clearError()
+    const exito = await login(tenantSlug.trim(), email.trim(), password)
+    if (exito) {
+      // TODO: reemplazar por navegacion de React Router cuando se
+      // configuren las rutas -- por ahora, redireccion simple.
+      window.location.href = '/dashboard'
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen bg-canvas">
+      {/* Panel izquierdo -- informativo, oculto en mobile */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between bg-ink px-12 py-12">
+        <div>
+          <span className="text-white text-lg font-semibold tracking-tight">
+            Churn Radar
+          </span>
+        </div>
+
+        <div className="max-w-md">
+          <h1 className="text-3xl font-semibold text-white tracking-tight leading-tight">
+            Sabé qué clientes se van, antes de que se vayan.
+          </h1>
+          <p className="mt-4 text-zinc-400 text-base leading-relaxed">
+            Cada predicción se calcula sobre tus propios datos, con el
+            mapeo y la escala configurados para tu negocio.
+          </p>
+
+          {/* Signature: una fila de dato real, no un mockup generico */}
+          <div className="mt-8 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-zinc-500">Cliente #0428</p>
+                <p className="text-sm text-zinc-200 mt-0.5">Mensual · Fibra óptica</p>
+              </div>
+              <div className="text-right">
+                <p className="font-mono tabular-nums text-2xl text-white">0.87</p>
+                <span className="badge-danger mt-1 inline-flex bg-red-950 text-red-400 border-red-900">
+                  Riesgo alto
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs text-zinc-600">
+          © {new Date().getFullYear()} Churn Radar
+        </p>
+      </div>
+
+      {/* Panel derecho -- formulario */}
+      <div className="flex w-full lg:w-1/2 items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <div className="lg:hidden mb-8">
+            <span className="text-ink text-lg font-semibold tracking-tight">
+              Churn Radar
+            </span>
+          </div>
+
+          <h2 className="text-2xl font-semibold text-ink tracking-tight">
+            Iniciá sesión
+          </h2>
+          <p className="mt-1.5 text-sm text-ink-muted">
+            Ingresá con las credenciales de tu workspace.
+          </p>
+
+          <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
+            <div>
+              <label htmlFor="tenantSlug" className="label">
+                Workspace
+              </label>
+              <input
+                id="tenantSlug"
+                type="text"
+                required
+                autoComplete="organization"
+                placeholder="tenant-prueba"
+                className="input"
+                value={tenantSlug}
+                onChange={(e) => setTenantSlug(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="email" className="label">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="nombre@empresa.com"
+                className="input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="label">
+                Contraseña
+              </label>
+              <input
+                id="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                placeholder="••••••••"
+                className="input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+
+            {error && (
+              <div
+                role="alert"
+                className="rounded-md border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger animate-slide-up"
+              >
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-accent w-full mt-2"
+            >
+              {loading ? 'Ingresando…' : 'Ingresar'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}

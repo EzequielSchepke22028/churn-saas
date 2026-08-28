@@ -1,0 +1,259 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans text-base;
+  }
+
+  ::selection {
+    @apply bg-accent-subtle text-accent-active;
+  }
+
+  /* Foco visible siempre -- accesibilidad, nunca se quita el outline sin reemplazo */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent/40 ring-offset-2 ring-offset-canvas;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-semibold tracking-tight text-ink;
+  }
+
+  /* Cualquier numero de producto (montos, probabilidades, IDs) usa mono
+     con tabular-nums -- alinea como tabla, no como prosa. Aplicar con
+     className="font-mono tabular-nums" en el componente que muestra el dato. */
+  code, .font-mono {
+    font-feature-settings: 'tnum' 1, 'cv11' 1;
+  }
+}
+
+@layer components {
+  /* ---------- Botones ---------- */
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2
+           text-sm font-medium transition-colors duration-150
+           disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-ink text-white shadow-subtle
+           hover:bg-ink/90 active:bg-ink/80;
+  }
+
+  .btn-accent {
+    @apply btn bg-accent text-white shadow-subtle
+           hover:bg-accent-hover active:bg-accent-active;
+  }
+
+  .btn-secondary {
+    @apply btn bg-surface text-ink border border-border shadow-subtle
+           hover:bg-canvas active:bg-border-subtle;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-muted hover:bg-canvas hover:text-ink;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger text-white shadow-subtle
+           hover:bg-danger/90 active:bg-danger/80;
+  }
+
+  /* ---------- Inputs ---------- */
+
+  .input {
+    @apply w-full rounded-md border border-border bg-surface px-3 py-2
+           text-sm text-ink placeholder:text-ink-subtle
+           transition-shadow duration-150
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40
+           focus-visible:border-accent-border
+           disabled:bg-canvas disabled:text-ink-subtle disabled:cursor-not-allowed;
+  }
+
+  .input-error {
+    @apply input border-danger-border focus-visible:ring-danger/20;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-ink mb-1.5;
+  }
+
+  .help-text {
+    @apply mt-1.5 text-xs text-ink-muted;
+  }
+
+  .error-text {
+    @apply mt-1.5 text-xs text-danger;
+  }
+
+  /* ---------- Cards ---------- */
+
+  .card {
+    @apply rounded-lg border border-border bg-surface shadow-card;
+  }
+
+  .card-header {
+    @apply flex items-center justify-between border-b border-border px-5 py-4;
+  }
+
+  .card-body {
+    @apply px-5 py-4;
+  }
+
+  .card-interactive {
+    @apply card transition-all duration-150
+           hover:shadow-raised hover:border-border-strong;
+  }
+
+  /* ---------- Badges (para estados: authorized / pending / cancelled, etc.) ---------- */
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5
+           text-xs font-medium;
+  }
+
+  .badge-neutral {
+    @apply badge bg-canvas text-ink-muted border border-border;
+  }
+
+  .badge-accent {
+    @apply badge bg-accent-subtle text-accent border border-accent-border;
+  }
+
+  .badge-success {
+    @apply badge bg-success-subtle text-success border border-success-border;
+  }
+
+  .badge-danger {
+    @apply badge bg-danger-subtle text-danger border border-danger-border;
+  }
+
+  .badge-warning {
+    @apply badge bg-warning-subtle text-warning border border-warning-border;
+  }
+}
+
+/*:root {
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --code-bg: #f4f3ec;
+  --accent: #aa3bff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-border: rgba(170, 59, 255, 0.5);
+  --social-bg: rgba(244, 243, 236, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9ca3af;
+    --text-h: #f3f4f6;
+    --bg: #16171d;
+    --border: #2e303a;
+    --code-bg: #1f2028;
+    --accent: #c084fc;
+    --accent-bg: rgba(192, 132, 252, 0.15);
+    --accent-border: rgba(192, 132, 252, 0.5);
+    --social-bg: rgba(47, 48, 58, 0.5);
+    --shadow:
+      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  }
+
+  #social .button-icon {
+    filter: invert(1) brightness(2);
+  }
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  width: 1126px;
+  max-width: 100%;
+  margin: 0 auto;
+  text-align: center;
+  border-inline: 1px solid var(--border);
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+h1,
+h2 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+h1 {
+  font-size: 56px;
+  letter-spacing: -1.68px;
+  margin: 32px 0;
+  @media (max-width: 1024px) {
+    font-size: 36px;
+    margin: 20px 0;
+  }
+}
+h2 {
+  font-size: 24px;
+  line-height: 118%;
+  letter-spacing: -0.24px;
+  margin: 0 0 8px;
+  @media (max-width: 1024px) {
+    font-size: 20px;
+  }
+}
+p {
+  margin: 0;
+}
+
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+}
+
+code {
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}*/
