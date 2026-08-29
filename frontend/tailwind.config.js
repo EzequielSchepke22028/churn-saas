@@ -90,10 +90,15 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(4px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        slide: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(300%)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 0.15s ease-out',
         'slide-up': 'slide-up 0.2s ease-out',
+        slide: 'slide 1.2s ease-in-out infinite',
       },
     },
   },

@@ -3,6 +3,7 @@ import Login from './pages/auth/Login'
 import Dashboard from './pages/dashboard/Dashboard'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicOnlyRoute from './routes/PublicOnlyRoute'
+import Predicciones from './pages/predicciones/Predicciones'
 
 export default function App() {
   return (
@@ -21,6 +22,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/predicciones"
+        element={
+          <ProtectedRoute>
+            <Predicciones />
           </ProtectedRoute>
         }
       />
