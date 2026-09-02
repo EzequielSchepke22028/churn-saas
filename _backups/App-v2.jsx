@@ -1,9 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/auth/Login'
 import Dashboard from './pages/dashboard/Dashboard'
-import Configuracion from './pages/configuracion/Configuracion'
-import Predicciones from './pages/predicciones/Predicciones'
-import Billing from './pages/billing/Billing' // <-- Importamos nuestra nueva página de Suscripción/Billing
+import Configuracion from './pages/configuracion/Configuracion' // <-- Importamos nuestra nueva página de Configuración
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicOnlyRoute from './routes/PublicOnlyRoute'
 
@@ -24,16 +22,6 @@ export default function App() {
       <Route path="/configuracion" element={
         <ProtectedRoute>
           <Configuracion />
-        </ProtectedRoute>
-      } />
-      <Route path="/predicciones" element={
-        <ProtectedRoute>
-          <Predicciones />
-        </ProtectedRoute>
-      } />
-      <Route path="/billing" element={
-        <ProtectedRoute>
-          <Billing />
         </ProtectedRoute>
       } />
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,5 +1,5 @@
 """Punto de entrada de la API churn-saas."""
-
+#from app.routers import auth, billing, configuracion, predicciones
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware  # <-- Importamos el middleware de CORS
 
@@ -21,10 +21,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 app.include_router(auth.router)
 app.include_router(configuracion.router)
 app.include_router(predicciones.router)
-
+# En el bloque de include_router (abajo de los demás), agregá:
+#app.include_router(billing.router) #app.include_router(billing.router) # 2. Comentamos la inclusión del router de billing
 
 @app.on_event("startup")
 def startup():

@@ -10,3 +10,4 @@ joblib
 python-multipartpython-dotenv
 httpx
 mercadopago
+mercadopago
