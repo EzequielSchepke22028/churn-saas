@@ -24,7 +24,7 @@ export default function Dashboard() {
               onClick={() => navigate('/billing')} 
               className="btn bg-accent text-white hover:bg-accent-hover text-xs py-1.5 px-3"
             >
-              💳 Estado del Plan
+              💳 Mi Suscripción
             </button>
             <button onClick={logout} className="btn-secondary text-xs py-1.5 px-3">
               Cerrar sesión
@@ -50,8 +50,10 @@ export default function Dashboard() {
                   <span className="text-ink font-semibold uppercase">{user?.role || 'owner'}</span>
                 </div>
                 <div className="flex justify-between pb-1">
-                  <span className="text-ink-muted">Plan V0:</span>
-                  <span className="text-accent font-semibold">Licencia Developer</span>
+                  <span className="text-ink-muted">ID de Sesión:</span>
+                  <span className="text-xs text-ink-muted select-all truncate max-w-[130px]" title={user?.id}>
+                    {user?.id || 'dc2f4eb0-1483-4f1e-8143-dd6ac08e8826'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -103,18 +105,18 @@ export default function Dashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="max-w-md">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-xl">🛡️</span>
-                    <h3 className="text-base font-semibold text-ink">Licenciamiento e Integración</h3>
+                    <span className="text-xl">💳</span>
+                    <h3 className="text-base font-semibold text-ink">Planes y Facturación</h3>
                   </div>
                   <p className="text-xs text-ink-muted leading-relaxed">
-                    Tu workspace de desarrollo cuenta con una Licencia de Desarrollo Activa. El procesamiento local está liberado de límites de uso.
+                    Gestiona el plan de suscripción de tu workspace. Suscríbete al Plan Estándar por $20.000 ARS/mes utilizando Mercado Pago de forma 100% automatizada.
                   </p>
                 </div>
                 <button 
                   onClick={() => navigate('/billing')} 
-                  className="btn btn-secondary text-xs py-2 px-6 sm:w-auto w-full"
+                  className="btn btn-accent text-xs py-2 px-6 sm:w-auto w-full"
                 >
-                  Ver Licencia ➔
+                  Gestionar Plan ➔
                 </button>
               </div>
             </div>
@@ -125,7 +127,7 @@ export default function Dashboard() {
       </div>
 
       <div className="text-center text-xs text-ink-subtle font-mono mt-8">
-        Churn SaaS &copy; 2026
+        CRM Multi-Tenant &copy; 2026
       </div>
     </div>
   )
