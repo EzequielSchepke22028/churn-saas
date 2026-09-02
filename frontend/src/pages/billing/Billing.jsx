@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+/*import { useNavigate } from 'react-router-dom'
 import useAuthStore from '../../store/authStore'
 
 const PLAN_DEVELOPER = {
@@ -20,7 +20,7 @@ export default function Billing() {
 
   return (
     <div className="min-h-screen bg-canvas p-8 select-none animate-fade-in">
-      {/* Header */}
+      {/* Header *//*}
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-4 mb-8 gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-ink tracking-tight">
@@ -39,7 +39,7 @@ export default function Billing() {
 
       <div className="max-w-xl mx-auto space-y-6">
         
-        {/* TARJETA DE ESTADO ACTUAL */}
+        {/* TARJETA DE ESTADO ACTUAL *//*}
         <div className="card bg-surface border border-border shadow-card p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-medium text-ink">Estado del Workspace</h2>
@@ -72,7 +72,7 @@ export default function Billing() {
           </div>
         </div>
 
-        {/* TARJETA DE CONTRATACIÓN */}
+        {/* TARJETA DE CONTRATACIÓN *//*}
         <div className="card bg-surface border border-border shadow-card p-6 overflow-hidden relative">
           <div className="border-b border-border/50 pb-4 mb-4">
             <h3 className="text-xl font-semibold text-ink">{PLAN_DEVELOPER.nombre}</h3>
@@ -106,4 +106,4 @@ export default function Billing() {
       </div>
     </div>
   )
-}
+}*/

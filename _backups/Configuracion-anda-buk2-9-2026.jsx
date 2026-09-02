@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useAuthStore from '../../store/authStore'
 import { getMapeo, updateMapeo, getFactorConversion, updateFactorConversion } from '../../services/configuracion'
@@ -48,7 +48,11 @@ export default function Configuracion() {
       // Si el tenant no tiene mapeo configurado en la DB, lo inicializamos con las 19 columnas obligatorias
       let mapeoCompleto = [...mapeoData]
       if (mapeoCompleto.length === 0) {
-        mapeoCompleto = COLUMNAS_OBLIGATORIAS.map(col => ({\n          columna_pipeline: col,\n          columna_origen: '',\n          mapeo_valores: null\n        }))
+        mapeoCompleto = COLUMNAS_OBLIGATORIAS.map(col => ({
+          columna_pipeline: col,
+          columna_origen: '',
+          mapeo_valores: null
+        }))
       } else {
         // Aseguramos que todas las columnas obligatorias estén presentes
         COLUMNAS_OBLIGATORIAS.forEach(col => {
@@ -154,7 +158,7 @@ export default function Configuracion() {
       console.error('Error al guardar mapeo:', err)
       setError(err.response?.data?.detail || 'No se pudo guardar el mapeo de columnas. Verifica que los datos sean correctos.')
     } finally {
-      setMapeo(false)
+      setSavingMapeo(false)
     }
   }
 
@@ -197,8 +201,6 @@ export default function Configuracion() {
       </div>
     )
   }
-
-  const estado = 'inactive' // Al estar desactivado temporalmente billing
 
   return (
     <div className="min-h-screen bg-canvas p-8 select-none animate-fade-in">
@@ -256,7 +258,7 @@ export default function Configuracion() {
                   Factor de Conversión
                 </label>
                 <input
-                  id=\"factor-input\"
+                  id="factor-input"
                   type="number"
                   step="0.0001"
                   className="input font-mono tabular-nums"
@@ -315,7 +317,7 @@ export default function Configuracion() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className=\"bg-canvas border-b border-border font-medium text-ink-muted text-xs uppercase tracking-wider\">
+                  <tr className="bg-canvas border-b border-border font-medium text-ink-muted text-xs uppercase tracking-wider">
                     <th className="px-6 py-3.5">Atributo del Modelo</th>
                     <th className="px-6 py-3.5">Columna en tu CSV</th>
                     <th className="px-6 py-3.5">Traducción de Categorías (Mapeo JSON)</th>
