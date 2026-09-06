@@ -3,124 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import useAuthStore from '../../store/authStore'
 import { getMapeo, updateMapeo, getFactorConversion, updateFactorConversion } from '../../services/configuracion'
 
-function ModalValores({ item, onGuardar, onCerrar }) {
-  const paresIniciales = Object.entries(item.mapeo_valores ?? {}).map(
-    ([clave, valor]) => ({ clave, valor: String(valor) })
-  )
-
-  const [pares, setPares] = useState(
-    paresIniciales.length > 0 ? paresIniciales : [{ clave: '', valor: '' }]
-  )
-  const [errorValidacion, setErrorValidacion] = useState(null)
-
-  const actualizarPar = (index, campo, valor) => {
-    setPares((prev) =>
-      prev.map((par, i) => (i === index ? { ...par, [campo]: valor } : par))
-    )
-  }
-
-  const agregarPar = () => {
-    setPares((prev) => [...prev, { clave: '', valor: '' }])
-  }
-
-  const eliminarPar = (index) => {
-    setPares((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const validarYGuardar = () => {
-    const paresLimpios = pares
-      .map((par) => ({ clave: par.clave.trim(), valor: par.valor.trim() }))
-      .filter((par) => par.clave !== '' || par.valor !== '')
-
-    if (paresLimpios.length === 0) {
-      setErrorValidacion('Agregá al menos un par clave-valor.')
-      return
-    }
-
-    for (const par of paresLimpios) {
-      if (par.clave === '' || par.valor === '') {
-        setErrorValidacion('Ningún par puede tener la clave o el valor vacíos.')
-        return
-      }
-    }
-
-    const claves = paresLimpios.map((par) => par.clave)
-    const clavesUnicas = new Set(claves)
-    if (clavesUnicas.size !== claves.length) {
-      setErrorValidacion('Hay claves repetidas. Cada valor de tu archivo debe mapearse una sola vez.')
-      return
-    }
-
-    const objetoFinal = Object.fromEntries(
-      paresLimpios.map((par) => [par.clave, par.valor])
-    )
-
-    onGuardar(objetoFinal)
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4 animate-fade-in">
-      <div className="card w-full max-w-md p-5 bg-surface border border-border shadow-raised">
-        <h3 className="text-sm font-semibold text-ink">
-          Valores de "{item.columna_pipeline}"
-        </h3>
-        <p className="mt-1 text-xs text-ink-muted">
-          Traducí cada valor de tu archivo a la categoría que espera el modelo.
-        </p>
-
-        <div className="mt-4 space-y-2 max-h-72 overflow-y-auto">
-          {pares.map((par, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Valor en tu archivo"
-                className="input py-1.5"
-                value={par.clave}
-                onChange={(e) => actualizarPar(index, 'clave', e.target.value)}
-              />
-              <span className="text-ink-subtle text-sm">→</span>
-              <input
-                type="text"
-                placeholder="Categoría del modelo"
-                className="input py-1.5"
-                value={par.valor}
-                onChange={(e) => actualizarPar(index, 'valor', e.target.value)}
-              />
-              <button
-                type="button"
-                onClick={() => eliminarPar(index)}
-                className="btn-ghost px-2 py-1.5 text-danger hover:bg-danger/5 rounded-md"
-                aria-label="Eliminar par"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <button type="button" onClick={agregarPar} className="btn-ghost mt-3 text-xs text-accent">
-          + Agregar valor
-        </button>
-
-        {errorValidacion && (
-          <div className="mt-3 rounded-md border border-danger/10 bg-danger/5 px-3 py-2 text-xs text-danger">
-            {errorValidacion}
-          </div>
-        )}
-
-        <div className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
-          <button type="button" onClick={onCerrar} className="btn-secondary text-xs py-1.5 px-3">
-            Cancelar
-          </button>
-          <button type="button" onClick={validarYGuardar} className="btn-accent text-xs py-1.5 px-3">
-            Guardar valores
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function Configuracion() {
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
@@ -128,7 +10,7 @@ export default function Configuracion() {
   // Estado del mapeo de columnas
   const [mapeo, setMapeo] = useState([])
   // Estado del factor de conversión
-  const [factor, setFactor] = useState('1.0')
+  const [factor, setFactor] = useState(1.0)
   
   // Estados de carga y mensajes
   const [loading, setLoading] = useState(true)
@@ -136,7 +18,6 @@ export default function Configuracion() {
   const [savingFactor, setSavingFactor] = useState(false)
   const [error, setError] = useState(null)
   const [successMsg, setSuccessMsg] = useState(null)
-  const [indiceModalAbierto, setIndiceModalAbierto] = useState(null)
 
   // Rol del usuario: owner, admin, colaborador
   const userRole = user?.role || 'colaborador'
@@ -151,26 +32,25 @@ export default function Configuracion() {
     'MonthlyCharges', 'TotalCharges'
   ]
 
-  const cargarConfiguracion = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const [mapeoData, factorData] = await Promise.all([
-        getMapeo(),
-        getFactorConversion()
-      ])
+  useEffect(() => {
+    let active = true
+    const cargarConfiguracion = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const [mapeoData, factorData] = await Promise.all([
+          getMapeo(),
+          getFactorConversion()
+        ])
+        if (!active) return
 
-      // Validación tolerante a fallos de formato del backend
-      const rawMapeo = Array.isArray(mapeoData) ? mapeoData : (mapeoData?.mapeo || [])
+        // El backend puede devolver el listado directo o dentro de un objeto {"mapeo": [...]}
+        const rawMapeo = Array.isArray(mapeoData) 
+          ? mapeoData 
+          : (mapeoData?.mapeo || [])
 
-      let mapeoCompleto = [...rawMapeo]
-      if (mapeoCompleto.length === 0) {
-        mapeoCompleto = COLUMNAS_OBLIGATORIAS.map(col => ({
-          columna_pipeline: col,
-          columna_origen: '',
-          mapeo_valores: null
-        }))
-      } else {
+        let mapeoCompleto = [...rawMapeo]
+        
         // Aseguramos que todas las columnas obligatorias estén presentes
         COLUMNAS_OBLIGATORIAS.forEach(col => {
           if (!mapeoCompleto.find(m => m.columna_pipeline === col)) {
@@ -181,27 +61,29 @@ export default function Configuracion() {
             })
           }
         })
-      }
 
-      setMapeo(mapeoCompleto.sort((a, b) => a.columna_pipeline.localeCompare(b.columna_pipeline)))
-      
-      // Manejar respuesta del factor de conversión
-      if (factorData && typeof factorData === 'object') {
-        setFactor(String(factorData.factor_conversion ?? factorData.factor ?? 1.0))
-      } else {
-        setFactor(typeof factorData === 'number' ? String(factorData) : '1.0')
-      }
+        setMapeo(mapeoCompleto.sort((a, b) => a.columna_pipeline.localeCompare(b.columna_pipeline)))
+        
+        // Manejar respuesta del factor según el formato del objeto devuelto
+        if (factorData && typeof factorData === 'object') {
+          setFactor(factorData.factor_conversion ?? factorData.factor ?? 1.0)
+        } else {
+          setFactor(typeof factorData === 'number' ? factorData : 1.0)
+        }
 
-    } catch (err) {
-      console.error('Error al cargar configuración:', err)
-      setError(err.response?.data?.detail || 'No se pudo conectar con el servidor para obtener la configuración.')
-    } finally {
-      setLoading(false)
+      } catch (err) {
+        if (!active) return
+        console.error('Error al cargar configuración:', err)
+        setError(err?.response?.data?.detail || 'No se pudo conectar con el servidor para obtener la configuración.')
+      } finally {
+        if (active) setLoading(false)
+      }
     }
-  }
 
-  useEffect(() => {
     cargarConfiguracion()
+    return () => {
+      active = false
+    }
   }, [])
 
   // Modificar un valor en el array de mapeo local
@@ -216,30 +98,16 @@ export default function Configuracion() {
     )
   }
 
-  // Guardar los valores del modal de traducción de categorías
-  const guardarValoresDeFila = (index, nuevoObjetoValores) => {
-    setMapeo((prev) =>
-      prev.map((item, i) => {
-        if (i === index) {
-          let valoresProcesados = { ...nuevoObjetoValores }
-          
-          // REGLA DE INGENIERÍA CRÍTICA: SeniorCitizen debe parsearse a entero obligatoriamente (0 / 1)
-          // para evitar que el pipeline falle de forma silenciosa entrenado con tipos numéricos.
-          if (item.columna_pipeline === 'SeniorCitizen') {
-            valoresProcesados = Object.fromEntries(
-              Object.entries(nuevoObjetoValores).map(([clave, valor]) => {
-                const parsed = parseInt(valor, 10)
-                return [clave, isNaN(parsed) ? valor : parsed]
-              })
-            )
-          }
-
-          return { ...item, mapeo_valores: valoresProcesados }
+  // Modificar el mapeo de valores JSON locales (por ejemplo, para categóricos)
+  const handleMapeoValoresChange = (columnaPipeline, stringValor) => {
+    setMapeo(prev => 
+      prev.map(item => {
+        if (item.columna_pipeline === columnaPipeline) {
+          return { ...item, _raw_mapeo_valores: stringValor }
         }
         return item
       })
     )
-    setIndiceModalAbierto(null)
   }
 
   // Guardar el mapeo de columnas completo en la DB
@@ -250,13 +118,64 @@ export default function Configuracion() {
     setError(null)
     setSuccessMsg(null)
 
+    // Formatear mapeos y parsear JSONs temporales de mapeo_valores
+    const mapeoPayload = []
+    let jsonError = false
+
+    for (const item of mapeo) {
+      let mapeoValoresParsed = item.mapeo_valores
+
+      // Si el usuario ingresó o modificó un string en el editor de JSON local
+      if (item._raw_mapeo_valores !== undefined) {
+        const trimmed = item._raw_mapeo_valores.trim()
+        if (trimmed === '') {
+          mapeoValoresParsed = null
+        } else {
+          try {
+            mapeoValoresParsed = JSON.parse(trimmed)
+          } catch {
+            setError(`Error de sintaxis JSON en la columna '${item.columna_pipeline}': Asegúrate de usar un formato válido como {"Si": "Yes", "No": "No"}`)
+            jsonError = true
+            break
+          }
+        }
+      }
+
+      mapeoPayload.push({
+        columna_pipeline: item.columna_pipeline,
+        columna_origen: item.columna_origen.trim(),
+        mapeo_valores: mapeoValoresParsed
+      })
+    }
+
+    if (jsonError) {
+      setSavingMapeo(false)
+      return
+    }
+
     try {
-      await updateMapeo(mapeo)
+      await updateMapeo(mapeoPayload)
       setSuccessMsg('Mapeo de columnas guardado de forma exitosa.')
-      cargarConfiguracion() // Recargar para sincronizar estados locales
+      
+      // Recargar datos desde el backend para sincronizar
+      const [mapeoData] = await Promise.all([getMapeo()])
+      const rawMapeo = Array.isArray(mapeoData) 
+        ? mapeoData 
+        : (mapeoData?.mapeo || [])
+      let mapeoCompleto = [...rawMapeo]
+      COLUMNAS_OBLIGATORIAS.forEach(col => {
+        if (!mapeoCompleto.find(m => m.columna_pipeline === col)) {
+          mapeoCompleto.push({
+            columna_pipeline: col,
+            columna_origen: '',
+            mapeo_valores: null
+          })
+        }
+      })
+      setMapeo(mapeoCompleto.sort((a, b) => a.columna_pipeline.localeCompare(b.columna_pipeline)))
     } catch (err) {
       console.error('Error al guardar mapeo:', err)
-      setError(err.response?.data?.detail || 'No se pudo guardar el mapeo de columnas. Verifica que los datos sean correctos.')
+      setError(err?.response?.data?.detail || 'No se pudo guardar el mapeo de columnas. Verifica que los datos sean correctos.')
     } finally {
       setSavingMapeo(false)
     }
@@ -279,10 +198,17 @@ export default function Configuracion() {
     try {
       await updateFactorConversion(factor)
       setSuccessMsg('Factor de conversión monetario guardado de forma exitosa.')
-      cargarConfiguracion()
+      
+      // Recargar factor
+      const factorData = await getFactorConversion()
+      if (factorData && typeof factorData === 'object') {
+        setFactor(factorData.factor_conversion ?? factorData.factor ?? 1.0)
+      } else {
+        setFactor(typeof factorData === 'number' ? factorData : 1.0)
+      }
     } catch (err) {
       console.error('Error al guardar factor:', err)
-      setError(err.response?.data?.detail || 'No se pudo actualizar el factor de conversión en el backend.')
+      setError(err?.response?.data?.detail || 'No se pudo actualizar el factor de conversión en el backend.')
     } finally {
       setSavingFactor(false)
     }
@@ -360,7 +286,7 @@ export default function Configuracion() {
                 <input
                   id="factor-input"
                   type="number"
-                  step="any"
+                  step="0.0001"
                   className="input font-mono tabular-nums"
                   placeholder="ej: 100.0"
                   value={factor}
@@ -424,46 +350,40 @@ export default function Configuracion() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {mapeo.map((item, index) => {
-                    const esCategorica = item.mapeo_valores !== null && item.mapeo_valores !== undefined
-                    return (
-                      <tr key={item.columna_pipeline} className="hover:bg-canvas/40 transition-colors">
-                        {/* Atributo del Modelo */}
-                        <td className="px-6 py-4 font-mono font-medium text-accent">
-                          {item.columna_pipeline}
-                        </td>
-                        {/* Columna en tu CSV (Editable) */}
-                        <td className="px-6 py-4">
-                          <input
-                            type="text"
-                            className="input font-mono py-1 px-2 text-xs"
-                            placeholder={`ej: ${item.columna_pipeline}`}
-                            value={item.columna_origen}
-                            onChange={(e) => handleMapeonChange(item.columna_pipeline, 'columna_origen', e.target.value)}
-                            disabled={isReadOnly || savingMapeo}
-                          />
-                        </td>
-                        {/* Traducción de Categorías */}
-                        <td className="px-6 py-4">
-                          {esCategorica ? (
-                            <button
-                              type="button"
-                              onClick={() => setIndiceModalAbierto(index)}
-                              disabled={isReadOnly || savingMapeo}
-                              className="btn-secondary py-1 px-2.5 text-xs disabled:opacity-50"
-                            >
-                              {Object.keys(item.mapeo_valores).length} valor
-                              {Object.keys(item.mapeo_valores).length !== 1 ? 'es' : ''}
-                            </button>
-                          ) : (
-                            <span className="badge-neutral bg-zinc-100 text-zinc-600 py-1 px-2.5 rounded-full text-xs font-mono font-medium">
-                              Numérica
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
+                  {mapeo.map((item) => (
+                    <tr key={item.columna_pipeline} className="hover:bg-canvas/40 transition-colors">
+                      {/* Atributo del Modelo */}
+                      <td className="px-6 py-4 font-mono font-medium text-accent">
+                        {item.columna_pipeline}
+                      </td>
+                      {/* Columna en tu CSV (Editable) */}
+                      <td className="px-6 py-4">
+                        <input
+                          type="text"
+                          className="input font-mono py-1 px-2 text-xs"
+                          placeholder={`ej: ${item.columna_pipeline}`}
+                          value={item.columna_origen}
+                          onChange={(e) => handleMapeonChange(item.columna_pipeline, 'columna_origen', e.target.value)}
+                          disabled={isReadOnly || savingMapeo}
+                        />
+                      </td>
+                      {/* Traducción de Categorías */}
+                      <td className="px-6 py-4">
+                        <input
+                          type="text"
+                          className="input font-mono py-1 px-2 text-xs text-ink-muted placeholder:text-ink-subtle"
+                          placeholder='ej: {"M": "Male", "F": "Female"}'
+                          value={
+                            item._raw_mapeo_valores !== undefined 
+                              ? item._raw_mapeo_valores 
+                              : (item.mapeo_valores ? JSON.stringify(item.mapeo_valores) : '')
+                          }
+                          onChange={(e) => handleMapeoValoresChange(item.columna_pipeline, e.target.value)}
+                          disabled={isReadOnly || savingMapeo}
+                        />
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -486,15 +406,6 @@ export default function Configuracion() {
         </div>
 
       </div>
-
-      {/* RENDERIZADO DEL MODAL */}
-      {indiceModalAbierto !== null && (
-        <ModalValores
-          item={mapeo[indiceModalAbierto]}
-          onGuardar={(valores) => guardarValoresDeFila(indiceModalAbierto, valores)}
-          onCerrar={() => setIndiceModalAbierto(null)}
-        />
-      )}
     </div>
   )
 }
