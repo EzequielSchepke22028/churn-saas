@@ -14,8 +14,7 @@ export const getMapeo = async () => {
 
 // Reemplaza el array de mapeo de columnas del tenant (sólo owner/admin)
 export const updateMapeo = async (mapeoArray) => {
-  // El backend espera recibir un objeto MapeoUpdateRequest con estructura { "mapeo": [...] }
-  const response = await api.put('/configuracion/mapeo', { mapeo: mapeoArray })
+  const response = await api.put('/configuracion/mapeo', mapeoArray)
   return response.data
 }
 
@@ -27,7 +26,6 @@ export const getFactorConversion = async () => {
 
 // Actualiza el factor de conversión monetario del tenant (sólo owner/admin)
 export const updateFactorConversion = async (factor) => {
-  // El backend espera un FactorConversionUpdateRequest con estructura { "factor_conversion": valor }
   const response = await api.put('/configuracion/factor-conversion', {
     factor_conversion: parseFloat(factor)
   })

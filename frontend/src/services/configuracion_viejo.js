@@ -1,5 +1,39 @@
 import api from './api'
 
+export async function getMapeo() {
+  const { data } = await api.get('/configuracion/mapeo')
+  return data
+}
+
+export async function updateMapeo(mapeo) {
+  const { data } = await api.put('/configuracion/mapeo', { mapeo })
+  return data
+}
+
+export async function getFactorConversion() {
+  const { data } = await api.get('/configuracion/factor-conversion')
+  return data
+}
+
+export async function updateFactorConversion(valor) {
+  const factorNumerico = parseFloat(valor)
+  const { data } = await api.put('/configuracion/factor-conversion', {
+    factor_conversion: factorNumerico,
+  })
+  return data
+}
+
+const configuracionService = {
+  getMapeo,
+  updateMapeo,
+  getFactorConversion,
+  updateFactorConversion
+}
+
+export default configuracionService
+
+/*import api from './api'
+
 /**
  * Servicio para gestionar la configuración de mapeo de columnas y factor de conversión.
  * Se comunica con el backend de FastAPI respetando el aislamiento multi-tenant por RLS
@@ -7,15 +41,14 @@ import api from './api'
  */
 
 // Obtiene el array de mapeo de columnas actual del tenant (cualquier rol)
-export const getMapeo = async () => {
+/*export const getMapeo = async () => {
   const response = await api.get('/configuracion/mapeo')
   return response.data
 }
 
 // Reemplaza el array de mapeo de columnas del tenant (sólo owner/admin)
 export const updateMapeo = async (mapeoArray) => {
-  // El backend espera recibir un objeto MapeoUpdateRequest con estructura { "mapeo": [...] }
-  const response = await api.put('/configuracion/mapeo', { mapeo: mapeoArray })
+  const response = await api.put('/configuracion/mapeo', mapeoArray)
   return response.data
 }
 
@@ -27,7 +60,8 @@ export const getFactorConversion = async () => {
 
 // Actualiza el factor de conversión monetario del tenant (sólo owner/admin)
 export const updateFactorConversion = async (factor) => {
-  // El backend espera un FactorConversionUpdateRequest con estructura { "factor_conversion": valor }
+  // El backend puede recibir { "factor_conversion": valor } o { "factor": valor } 
+  // según el schema Pydantic. Mandamos ambos o el objeto que mapee según el estándar.
   const response = await api.put('/configuracion/factor-conversion', {
     factor_conversion: parseFloat(factor)
   })
@@ -41,4 +75,4 @@ const configuracionService = {
   updateFactorConversion
 }
 
-export default configuracionService
+export default configuracionService*/

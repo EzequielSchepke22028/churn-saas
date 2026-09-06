@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+/*import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useAuthStore from '../../store/authStore'
-import { getMapeo, updateMapeo, getFactorConversion, updateFactorConversion } from '../../services/configuracion'
+import { getMapeo, updateMapeo, getFactorConversion, updateFactorConversion } from '../../services/configuracion_viejo'
 
 export default function Configuracion() {
   const user = useAuthStore((state) => state.user)
@@ -32,25 +32,24 @@ export default function Configuracion() {
     'MonthlyCharges', 'TotalCharges'
   ]
 
-  useEffect(() => {
-    let active = true
-    const cargarConfiguracion = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const [mapeoData, factorData] = await Promise.all([
-          getMapeo(),
-          getFactorConversion()
-        ])
-        if (!active) return
+  const cargarConfiguracion = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [mapeoData, factorData] = await Promise.all([
+        getMapeo(),
+        getFactorConversion()
+      ])
 
-        // El backend puede devolver el listado directo o dentro de un objeto {"mapeo": [...]}
-        const rawMapeo = Array.isArray(mapeoData) 
-          ? mapeoData 
-          : (mapeoData?.mapeo || [])
-
-        let mapeoCompleto = [...rawMapeo]
-        
+      // Si el tenant no tiene mapeo configurado en la DB, lo inicializamos con las 19 columnas obligatorias
+      let mapeoCompleto = [...mapeoData]
+      if (mapeoCompleto.length === 0) {
+        mapeoCompleto = COLUMNAS_OBLIGATORIAS.map(col => ({
+          columna_pipeline: col,
+          columna_origen: '',
+          mapeo_valores: null
+        }))
+      } else {
         // Aseguramos que todas las columnas obligatorias estén presentes
         COLUMNAS_OBLIGATORIAS.forEach(col => {
           if (!mapeoCompleto.find(m => m.columna_pipeline === col)) {
@@ -61,29 +60,27 @@ export default function Configuracion() {
             })
           }
         })
-
-        setMapeo(mapeoCompleto.sort((a, b) => a.columna_pipeline.localeCompare(b.columna_pipeline)))
-        
-        // Manejar respuesta del factor según el formato del objeto devuelto
-        if (factorData && typeof factorData === 'object') {
-          setFactor(factorData.factor_conversion ?? factorData.factor ?? 1.0)
-        } else {
-          setFactor(typeof factorData === 'number' ? factorData : 1.0)
-        }
-
-      } catch (err) {
-        if (!active) return
-        console.error('Error al cargar configuración:', err)
-        setError(err?.response?.data?.detail || 'No se pudo conectar con el servidor para obtener la configuración.')
-      } finally {
-        if (active) setLoading(false)
       }
-    }
 
-    cargarConfiguracion()
-    return () => {
-      active = false
+      setMapeo(mapeoCompleto.sort((a, b) => a.columna_pipeline.localeCompare(b.columna_pipeline)))
+      
+      // Manejar respuesta del factor según el formato del objeto devuelto
+      if (factorData && typeof factorData === 'object') {
+        setFactor(factorData.factor_conversion ?? factorData.factor ?? 1.0)
+      } else {
+        setFactor(typeof factorData === 'number' ? factorData : 1.0)
+      }
+
+    } catch (err) {
+      console.error('Error al cargar configuración:', err)
+      setError(err.response?.data?.detail || 'No se pudo conectar con el servidor para obtener la configuración.')
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
+    cargarConfiguracion()
   }, [])
 
   // Modificar un valor en el array de mapeo local
@@ -133,7 +130,7 @@ export default function Configuracion() {
         } else {
           try {
             mapeoValoresParsed = JSON.parse(trimmed)
-          } catch {
+          } catch (err) {
             setError(`Error de sintaxis JSON en la columna '${item.columna_pipeline}': Asegúrate de usar un formato válido como {"Si": "Yes", "No": "No"}`)
             jsonError = true
             break
@@ -156,26 +153,10 @@ export default function Configuracion() {
     try {
       await updateMapeo(mapeoPayload)
       setSuccessMsg('Mapeo de columnas guardado de forma exitosa.')
-      
-      // Recargar datos desde el backend para sincronizar
-      const [mapeoData] = await Promise.all([getMapeo()])
-      const rawMapeo = Array.isArray(mapeoData) 
-        ? mapeoData 
-        : (mapeoData?.mapeo || [])
-      let mapeoCompleto = [...rawMapeo]
-      COLUMNAS_OBLIGATORIAS.forEach(col => {
-        if (!mapeoCompleto.find(m => m.columna_pipeline === col)) {
-          mapeoCompleto.push({
-            columna_pipeline: col,
-            columna_origen: '',
-            mapeo_valores: null
-          })
-        }
-      })
-      setMapeo(mapeoCompleto.sort((a, b) => a.columna_pipeline.localeCompare(b.columna_pipeline)))
+      cargarConfiguracion() // Recargar para sincronizar estados locales
     } catch (err) {
       console.error('Error al guardar mapeo:', err)
-      setError(err?.response?.data?.detail || 'No se pudo guardar el mapeo de columnas. Verifica que los datos sean correctos.')
+      setError(err.response?.data?.detail || 'No se pudo guardar el mapeo de columnas. Verifica que los datos sean correctos.')
     } finally {
       setSavingMapeo(false)
     }
@@ -198,17 +179,10 @@ export default function Configuracion() {
     try {
       await updateFactorConversion(factor)
       setSuccessMsg('Factor de conversión monetario guardado de forma exitosa.')
-      
-      // Recargar factor
-      const factorData = await getFactorConversion()
-      if (factorData && typeof factorData === 'object') {
-        setFactor(factorData.factor_conversion ?? factorData.factor ?? 1.0)
-      } else {
-        setFactor(typeof factorData === 'number' ? factorData : 1.0)
-      }
+      cargarConfiguracion()
     } catch (err) {
       console.error('Error al guardar factor:', err)
-      setError(err?.response?.data?.detail || 'No se pudo actualizar el factor de conversión en el backend.')
+      setError(err.response?.data?.detail || 'No se pudo actualizar el factor de conversión en el backend.')
     } finally {
       setSavingFactor(false)
     }
@@ -228,9 +202,11 @@ export default function Configuracion() {
     )
   }
 
+  const estado = 'inactive' // Al estar desactivado temporalmente billing
+
   return (
     <div className="min-h-screen bg-canvas p-8 select-none animate-fade-in">
-      {/* Header de la sección */}
+      {/* Header de la sección *//*}
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-4 mb-8 gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-ink tracking-tight">
@@ -256,7 +232,7 @@ export default function Configuracion() {
         </div>
       </div>
 
-      {/* Alertas globales de error y éxito */}
+      {/* Alertas globales de error y éxito *//*}
       {error && (
         <div className="p-4 bg-danger/5 border border-danger/15 rounded-md mb-6 animate-slide-up">
           <p className="error-text m-0 text-sm font-medium">{error}</p>
@@ -270,7 +246,7 @@ export default function Configuracion() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* PANEL IZQUIERDO: Factor de conversión monetario */}
+        {/* PANEL IZQUIERDO: Factor de conversión monetario *//*}
         <div className="lg:col-span-4 space-y-6">
           <div className="card bg-surface border border-border shadow-card p-6">
             <h2 className="text-lg font-medium text-ink mb-2">Escala Monetaria</h2>
@@ -319,7 +295,7 @@ export default function Configuracion() {
           </div>
         </div>
 
-        {/* PANEL DERECHO: Tabla de Mapeo de Columnas */}
+        {/* PANEL DERECHO: Tabla de Mapeo de Columnas *//*}
         <div className="lg:col-span-8">
           <div className="card bg-surface border border-border shadow-card">
             <div className="card-header border-b border-border flex items-center justify-between">
@@ -352,11 +328,11 @@ export default function Configuracion() {
                 <tbody className="divide-y divide-border/60">
                   {mapeo.map((item) => (
                     <tr key={item.columna_pipeline} className="hover:bg-canvas/40 transition-colors">
-                      {/* Atributo del Modelo */}
+                      {/* Atributo del Modelo *//*}
                       <td className="px-6 py-4 font-mono font-medium text-accent">
                         {item.columna_pipeline}
                       </td>
-                      {/* Columna en tu CSV (Editable) */}
+                      {/* Columna en tu CSV (Editable) *//*}
                       <td className="px-6 py-4">
                         <input
                           type="text"
@@ -367,7 +343,7 @@ export default function Configuracion() {
                           disabled={isReadOnly || savingMapeo}
                         />
                       </td>
-                      {/* Traducción de Categorías */}
+                      {/* Traducción de Categorías *//*}
                       <td className="px-6 py-4">
                         <input
                           type="text"
@@ -408,4 +384,4 @@ export default function Configuracion() {
       </div>
     </div>
   )
-}
+}*/

@@ -44,23 +44,26 @@ export default function Configuracion() {
         ])
         if (!active) return
 
-        // El backend puede devolver el listado directo o dentro de un objeto {"mapeo": [...]}
-        const rawMapeo = Array.isArray(mapeoData) 
-          ? mapeoData 
-          : (mapeoData?.mapeo || [])
-
-        let mapeoCompleto = [...rawMapeo]
-        
-        // Aseguramos que todas las columnas obligatorias estén presentes
-        COLUMNAS_OBLIGATORIAS.forEach(col => {
-          if (!mapeoCompleto.find(m => m.columna_pipeline === col)) {
-            mapeoCompleto.push({
-              columna_pipeline: col,
-              columna_origen: '',
-              mapeo_valores: null
-            })
-          }
-        })
+        // Si el tenant no tiene mapeo configurado en la DB, lo inicializamos con las 19 columnas obligatorias
+        let mapeoCompleto = [...mapeoData]
+        if (mapeoCompleto.length === 0) {
+          mapeoCompleto = COLUMNAS_OBLIGATORIAS.map(col => ({
+            columna_pipeline: col,
+            columna_origen: '',
+            mapeo_valores: null
+          }))
+        } else {
+          // Aseguramos que todas las columnas obligatorias estén presentes
+          COLUMNAS_OBLIGATORIAS.forEach(col => {
+            if (!mapeoCompleto.find(m => m.columna_pipeline === col)) {
+              mapeoCompleto.push({
+                columna_pipeline: col,
+                columna_origen: '',
+                mapeo_valores: null
+              })
+            }
+          })
+        }
 
         setMapeo(mapeoCompleto.sort((a, b) => a.columna_pipeline.localeCompare(b.columna_pipeline)))
         
@@ -159,10 +162,7 @@ export default function Configuracion() {
       
       // Recargar datos desde el backend para sincronizar
       const [mapeoData] = await Promise.all([getMapeo()])
-      const rawMapeo = Array.isArray(mapeoData) 
-        ? mapeoData 
-        : (mapeoData?.mapeo || [])
-      let mapeoCompleto = [...rawMapeo]
+      let mapeoCompleto = [...mapeoData]
       COLUMNAS_OBLIGATORIAS.forEach(col => {
         if (!mapeoCompleto.find(m => m.columna_pipeline === col)) {
           mapeoCompleto.push({
@@ -326,7 +326,7 @@ export default function Configuracion() {
               <div>
                 <h2 className="text-lg font-medium text-ink">Mapeo de Atributos</h2>
                 <p className="text-xs text-ink-muted mt-0.5">
-                  Establece la equivalencia exacta entre las columnas de tus CSVs y los inputs esperados por el pipeline.
+                  Establece la equivalencia exacta entre las columnas de tus CSVs and los inputs esperados por el pipeline.
                 </p>
               </div>
               {!isReadOnly && (

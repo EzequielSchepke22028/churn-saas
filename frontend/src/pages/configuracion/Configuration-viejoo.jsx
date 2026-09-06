@@ -32,25 +32,24 @@ export default function Configuracion() {
     'MonthlyCharges', 'TotalCharges'
   ]
 
-  useEffect(() => {
-    let active = true
-    const cargarConfiguracion = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const [mapeoData, factorData] = await Promise.all([
-          getMapeo(),
-          getFactorConversion()
-        ])
-        if (!active) return
+  const cargarConfiguracion = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [mapeoData, factorData] = await Promise.all([
+        getMapeo(),
+        getFactorConversion()
+      ])
 
-        // El backend puede devolver el listado directo o dentro de un objeto {"mapeo": [...]}
-        const rawMapeo = Array.isArray(mapeoData) 
-          ? mapeoData 
-          : (mapeoData?.mapeo || [])
-
-        let mapeoCompleto = [...rawMapeo]
-        
+      // Si el tenant no tiene mapeo configurado en la DB, lo inicializamos con las 19 columnas obligatorias
+      let mapeoCompleto = [...mapeoData]
+      if (mapeoCompleto.length === 0) {
+        mapeoCompleto = COLUMNAS_OBLIGATORIAS.map(col => ({
+          columna_pipeline: col,
+          columna_origen: '',
+          mapeo_valores: null
+        }))
+      } else {
         // Aseguramos que todas las columnas obligatorias estén presentes
         COLUMNAS_OBLIGATORIAS.forEach(col => {
           if (!mapeoCompleto.find(m => m.columna_pipeline === col)) {
@@ -61,29 +60,27 @@ export default function Configuracion() {
             })
           }
         })
-
-        setMapeo(mapeoCompleto.sort((a, b) => a.columna_pipeline.localeCompare(b.columna_pipeline)))
-        
-        // Manejar respuesta del factor según el formato del objeto devuelto
-        if (factorData && typeof factorData === 'object') {
-          setFactor(factorData.factor_conversion ?? factorData.factor ?? 1.0)
-        } else {
-          setFactor(typeof factorData === 'number' ? factorData : 1.0)
-        }
-
-      } catch (err) {
-        if (!active) return
-        console.error('Error al cargar configuración:', err)
-        setError(err?.response?.data?.detail || 'No se pudo conectar con el servidor para obtener la configuración.')
-      } finally {
-        if (active) setLoading(false)
       }
-    }
 
-    cargarConfiguracion()
-    return () => {
-      active = false
+      setMapeo(mapeoCompleto.sort((a, b) => a.columna_pipeline.localeCompare(b.columna_pipeline)))
+      
+      // Manejar respuesta del factor según el formato del objeto devuelto
+      if (factorData && typeof factorData === 'object') {
+        setFactor(factorData.factor_conversion ?? factorData.factor ?? 1.0)
+      } else {
+        setFactor(typeof factorData === 'number' ? factorData : 1.0)
+      }
+
+    } catch (err) {
+      console.error('Error al cargar configuración:', err)
+      setError(err.response?.data?.detail || 'No se pudo conectar con el servidor para obtener la configuración.')
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
+    cargarConfiguracion()
   }, [])
 
   // Modificar un valor en el array de mapeo local
@@ -133,7 +130,7 @@ export default function Configuracion() {
         } else {
           try {
             mapeoValoresParsed = JSON.parse(trimmed)
-          } catch {
+          } catch (err) {
             setError(`Error de sintaxis JSON en la columna '${item.columna_pipeline}': Asegúrate de usar un formato válido como {"Si": "Yes", "No": "No"}`)
             jsonError = true
             break
@@ -156,26 +153,10 @@ export default function Configuracion() {
     try {
       await updateMapeo(mapeoPayload)
       setSuccessMsg('Mapeo de columnas guardado de forma exitosa.')
-      
-      // Recargar datos desde el backend para sincronizar
-      const [mapeoData] = await Promise.all([getMapeo()])
-      const rawMapeo = Array.isArray(mapeoData) 
-        ? mapeoData 
-        : (mapeoData?.mapeo || [])
-      let mapeoCompleto = [...rawMapeo]
-      COLUMNAS_OBLIGATORIAS.forEach(col => {
-        if (!mapeoCompleto.find(m => m.columna_pipeline === col)) {
-          mapeoCompleto.push({
-            columna_pipeline: col,
-            columna_origen: '',
-            mapeo_valores: null
-          })
-        }
-      })
-      setMapeo(mapeoCompleto.sort((a, b) => a.columna_pipeline.localeCompare(b.columna_pipeline)))
+      cargarConfiguracion() // Recargar para sincronizar estados locales
     } catch (err) {
       console.error('Error al guardar mapeo:', err)
-      setError(err?.response?.data?.detail || 'No se pudo guardar el mapeo de columnas. Verifica que los datos sean correctos.')
+      setError(err.response?.data?.detail || 'No se pudo guardar el mapeo de columnas. Verifica que los datos sean correctos.')
     } finally {
       setSavingMapeo(false)
     }
@@ -198,17 +179,10 @@ export default function Configuracion() {
     try {
       await updateFactorConversion(factor)
       setSuccessMsg('Factor de conversión monetario guardado de forma exitosa.')
-      
-      // Recargar factor
-      const factorData = await getFactorConversion()
-      if (factorData && typeof factorData === 'object') {
-        setFactor(factorData.factor_conversion ?? factorData.factor ?? 1.0)
-      } else {
-        setFactor(typeof factorData === 'number' ? factorData : 1.0)
-      }
+      cargarConfiguracion()
     } catch (err) {
       console.error('Error al guardar factor:', err)
-      setError(err?.response?.data?.detail || 'No se pudo actualizar el factor de conversión en el backend.')
+      setError(err.response?.data?.detail || 'No se pudo actualizar el factor de conversión en el backend.')
     } finally {
       setSavingFactor(false)
     }
@@ -397,7 +371,7 @@ export default function Configuracion() {
                   onClick={handleGuardarMapeo}
                   className="btn-accent py-1.5 px-6"
                   disabled={savingMapeo}
-                >
+                >\
                   {savingMapeo ? 'Guardando todo...' : 'Aplicar Todos los Cambios'}
                 </button>
               )}
